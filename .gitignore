@@ -1,0 +1,3 @@
+# do not track or commit secrets to repos
+.env
+
