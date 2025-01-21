@@ -1,3 +1,6 @@
 # do not track or commit secrets to repos
 .env
 
+# do not track any builds that happen in this repo/directory
+weather
+
