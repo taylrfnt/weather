@@ -13,6 +13,11 @@ import (
 	"github.com/fatih/color"
 )
 
+type IPLocation struct {
+	Latitude  float64 `json:"lat"`
+	Longitude float64 `json:"lon"`
+}
+
 type Points struct {
 	Properties struct {
 		GridID            string `json:"gridId"`
@@ -25,9 +30,9 @@ type Points struct {
 			Properties struct {
 				City  string `json:"city"`
 				State string `json:"state"`
-			} `json: "properties"`
-		} `json: "relativeLocation"`
-	} `json: "properties"`
+			} `json:"properties"`
+		} `json:"relativeLocation"`
+	} `json:"properties"`
 }
 
 type Stations struct {
@@ -88,26 +93,54 @@ type Alerts struct {
 
 func main() {
 	/*
-	  STAGE 1: CONVERT LATITUDE & LONGITUDE TO NWS GRID VALUES
+			  STAGE 1: CONVERT LATITUDE & LONGITUDE TO NWS GRID VALUES
 
-	  This stage will:
-	    - prompt user for location (zip code/known location)
-	    - get the NWS grid points for the corresponding lat/long tuple
-	    - parse the data and store the important values in vars, which are used to build the data
-	      we will print on the console for users
+			  This stage will:
+			    - determine user location (lat & long)
+		      - use the NWS grid points for the corresponding lat/long tuple to locate forecast, zone,
+		        & stations
+			    - parse the data and store the important values in vars, which are used to build the data
+			      we will print on the console for users
 
 	*/
 
-	// TODO : prompt for zip code and convert to lat/long
-	lat := 29.7725
-	long := -95.6201
+	// let's get the user's public ip so we can convert it into lat & long
+	res, err := http.Get("https://ipinfo.io/ip")
+	if err != nil {
+		panic(err)
+	}
+	defer res.Body.Close()
 
-	//if len(os.Args) >= 3 {
-	//	lat = os.Args[1]
-	//	long = os.Args[2]
-	//}
+	if res.StatusCode != 200 {
+		panic("Public IP API not available")
+	}
 
-	res, err := http.Get(fmt.Sprintf("https://api.weather.gov/points/%f,%f", lat, long))
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		panic(err)
+	}
+
+	ipAddr := string(body)
+
+	res, err = http.Get(fmt.Sprintf("http://ip-api.com/json/%s", ipAddr))
+	if err != nil {
+		panic(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		panic("IP2Loc API not available")
+	}
+	body, err = io.ReadAll(res.Body)
+
+	var userLocation IPLocation
+	err = json.Unmarshal(body, &userLocation)
+	if err != nil {
+		panic(err)
+	}
+	lat := userLocation.Latitude
+	long := userLocation.Longitude
+
+	res, err = http.Get(fmt.Sprintf("https://api.weather.gov/points/%f,%f", lat, long))
 	// check request errors
 	if err != nil {
 		panic(err)
@@ -121,7 +154,7 @@ func main() {
 	}
 
 	// attempt to parse the response data
-	body, err := io.ReadAll(res.Body)
+	body, err = io.ReadAll(res.Body)
 	if err != nil {
 		panic(err)
 	}
@@ -351,7 +384,7 @@ func main() {
 	)
 
 	// FORECAST
-	boldWhite.Println("FORECAST")
+	boldWhite.Println("HOURLY FORECAST")
 	italicWhite.Println("Time\t\tTemperature\tPrecip %\tHumidity %\tDescription")
 	for _, period := range hourlyForecast.Properties.Periods {
 		currentDay := time.Now().Day()
