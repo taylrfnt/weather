@@ -53,23 +53,29 @@ type Observations struct {
 		Humidity struct {
 			Value float64 `json:"value"`
 		} `json:"relativeHumidity"`
+		WindDirection struct {
+			Value int `json:"value"`
+		} `json:"windDirection"`
+		WindSpeed struct {
+			Value float64 `json:"value"`
+		} `json:"windSpeed"`
 	} `json:"properties"`
 }
 
 type HourlyForecast struct {
 	Properties struct {
 		Periods []struct {
-			Number        int32  `json:"number"`
+			Number        int    `json:"number"`
 			StartTime     string `json:"startTime"`
 			EndTime       string `json:"endTime"`
 			Temperature   int    `json:"temperature"`
 			Precipitation struct {
 				Unit  string `json:"unitCode"`
-				Value int32  `json:"value"`
+				Value int    `json:"value"`
 			} `json:"propabilityOfPrecipitation"`
 			Humidity struct {
 				Unit  string `json:"unitCode"`
-				Value int32  `json:"value"`
+				Value int    `json:"value"`
 			} `json:"relativeHumidity"`
 			ShortForecast string `json:"shortForecast"`
 		} `json:"periods"`
@@ -246,6 +252,97 @@ func main() {
 	currentTempF := (currentTempC * (9 / 5)) + 32
 	currentHumidity := observations.Properties.Humidity.Value
 	currentCondition := observations.Properties.Description
+	currentWindSpeedKph := observations.Properties.WindSpeed.Value
+	currentWindDirectionDeg := observations.Properties.WindDirection.Value
+
+	// wind speed is in kph, we want mph
+	currentWindSpeedMph := currentWindSpeedKph / 1.609
+
+	// wind direction is in degrees, let's convert to 8-point compass
+	var currentWindDir string
+	if currentWindDirectionDeg == 0 {
+		currentWindDir = ""
+	} else if currentWindDirectionDeg > 0 && currentWindDirectionDeg < 45 {
+		nDist := currentWindDirectionDeg - 0
+		neDist := 45 - currentWindDirectionDeg
+		if nDist < neDist {
+			currentWindDir = ""
+		} else {
+			currentWindDir = ""
+		}
+	} else if currentWindDirectionDeg == 45 {
+		currentWindDir = ""
+	} else if currentWindDirectionDeg > 45 && currentWindDirectionDeg < 90 {
+		neDist := currentWindDirectionDeg - 45
+		eDist := 90 - currentWindDirectionDeg
+		if neDist < eDist {
+			currentWindDir = ""
+		} else {
+			currentWindDir = ""
+		}
+	} else if currentWindDirectionDeg == 90 {
+		currentWindDir = ""
+	} else if currentWindDirectionDeg > 90 && currentWindDirectionDeg < 135 {
+		eDist := currentWindDirectionDeg - 90
+		seDist := 135 - currentWindDirectionDeg
+		if eDist < seDist {
+			currentWindDir = ""
+		} else {
+			currentWindDir = ""
+		}
+	} else if currentWindDirectionDeg == 135 {
+		currentWindDir = ""
+	} else if currentWindDirectionDeg > 135 && currentWindDirectionDeg < 180 {
+		seDist := currentWindDirectionDeg - 135
+		sDist := 180 - currentWindDirectionDeg
+		if seDist < sDist {
+			currentWindDir = ""
+		} else {
+			currentWindDir = ""
+		}
+	} else if currentWindDirectionDeg == 180 {
+		currentWindDir = ""
+	} else if currentWindDirectionDeg > 180 && currentWindDirectionDeg < 225 {
+		sDist := currentWindDirectionDeg - 180
+		swDist := 225 - currentWindDirectionDeg
+		if sDist < swDist {
+			currentWindDir = ""
+		} else {
+			currentWindDir = ""
+		}
+	} else if currentWindDirectionDeg == 225 {
+		currentWindDir = ""
+	} else if currentWindDirectionDeg > 225 && currentWindDirectionDeg < 270 {
+		swDist := currentWindDirectionDeg - 225
+		wDist := 270 - currentWindDirectionDeg
+		if swDist < wDist {
+			currentWindDir = ""
+		} else {
+			currentWindDir = ""
+		}
+	} else if currentWindDirectionDeg == 270 {
+		currentWindDir = ""
+	} else if currentWindDirectionDeg > 270 && currentWindDirectionDeg < 315 {
+		wDist := currentWindDirectionDeg - 270
+		nwDist := 315 - currentWindDirectionDeg
+		if wDist < nwDist {
+			currentWindDir = ""
+		} else {
+			currentWindDir = ""
+		}
+	} else if currentWindDirectionDeg == 315 {
+		currentWindDir = ""
+	} else if currentWindDirectionDeg > 315 && currentWindDirectionDeg < 360 {
+		nwDist := currentWindDirectionDeg - 315
+		nDist := 360 - currentWindDirectionDeg
+		if nwDist < nDist {
+			currentWindDir = ""
+		} else {
+			currentWindDir = ""
+		}
+	} else if currentWindDirectionDeg == 360 {
+		currentWindDir = ""
+	}
 
 	/*
 	  STAGE 3: GET HOURLY FORECAST DATA
@@ -343,45 +440,64 @@ func main() {
 		currentState,
 	))
 
-	// ALERTS (SHOULD BE RED & BOLD)
-	boldRed.Println("CURRENT ALERTS")
-	// instructions should be italic & unbolded
-	for _, feature := range alerts.Features {
-		startTime, err := time.Parse(time.RFC3339, feature.Properties.EffectiveTime)
-		if err != nil {
-			panic(err)
-		}
-		endTime, err := time.Parse(time.RFC3339, feature.Properties.ExpireTime)
-		if err != nil {
-			panic(err)
-		}
-		if endTime.Before(time.Now()) {
-			continue
-		} else {
-			message := fmt.Sprintf("%s (%s)\nStart: %s\tEnd: %s\n\n",
-				feature.Properties.Event,
-				feature.Properties.Sender,
-				startTime.Format("02 Jan 2006 15:04:05"),
-				endTime.Format("02 Jan 2006 15:04:05"),
-			)
-			color.Red(message)
+	// only print alerts when there are active ones
+	if len(alerts.Features) != 0 {
+		// ALERTS (SHOULD BE RED & BOLD)
+		boldRed.Println("CURRENT ALERTS")
+		// instructions should be italic & unbolded
+		for _, feature := range alerts.Features {
+			startTime, err := time.Parse(time.RFC3339, feature.Properties.EffectiveTime)
+			if err != nil {
+				panic(err)
+			}
+			endTime, err := time.Parse(time.RFC3339, feature.Properties.ExpireTime)
+			if err != nil {
+				panic(err)
+			}
+			if endTime.Before(time.Now()) {
+				continue
+			} else {
+				message := fmt.Sprintf("%s (%s)\nStart: %s\tEnd: %s\n\n",
+					feature.Properties.Event,
+					feature.Properties.Sender,
+					startTime.Format("02 Jan 2006 15:04:05"),
+					endTime.Format("02 Jan 2006 15:04:05"),
+				)
+				color.Red(message)
+			}
 		}
 	}
 
 	// CURRENT WEATHER
 	boldWhite.Println("CURRENT CONDITIONS")
 	// values
-	italicWhite.Println("Temperature\tHumidity\tSummary")
-	fmt.Printf("%.0f°F\t\t%.1f%%\t\t%s\n",
-		currentTempF,
-		currentHumidity,
-		currentCondition,
-	)
-	// print the source station info for extra data
-	italicBlack.Printf("%s (%s)\n\n",
-		stationID,
-		stationName,
-	)
+	if currentWindSpeedMph == 0 {
+		italicWhite.Println("Temperature\tHumidity\tWind\t\tDescription")
+		fmt.Printf("%.0f°F\t\t%.1f%%\t\t--\t%s\n",
+			currentTempF,
+			currentHumidity,
+			currentCondition,
+		)
+		// print the source station info for extra data
+		italicBlack.Printf("%s (%s)\n\n",
+			stationID,
+			stationName,
+		)
+	} else {
+		italicWhite.Println("Temperature\tHumidity\tWind\t\tDescription")
+		fmt.Printf("%.0f°F\t\t%.1f%%\t\t%s %.1f mph\t%s\n",
+			currentTempF,
+			currentHumidity,
+			currentWindDir,
+			currentWindSpeedMph,
+			currentCondition,
+		)
+		// print the source station info for extra data
+		italicBlack.Printf("%s (%s)\n\n",
+			stationID,
+			stationName,
+		)
+	}
 
 	// FORECAST
 	boldWhite.Println("HOURLY FORECAST")
