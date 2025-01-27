@@ -417,13 +417,12 @@ func main() {
 	}
 
 	/*
-			  STAGE 5: PRINT WEATHER INFORMATION
-
-			  This stage will:
-			    - define custom print styles (courtesy of fatih/color)
-		      - build message contents with forecast data
-		      - (TODO) add formatting based on any thresholds
-		      - print the weather data to the console
+				STAGE 5: PRINT WEATHER INFORMATION
+		    This stage will:
+		    - define custom print styles (courtesy of fatih/color)
+		    - build message contents with forecast data
+		    - (TODO) add formatting based on any thresholds
+		    - print the weather data to the console
 
 	*/
 
@@ -503,18 +502,22 @@ func main() {
 	boldWhite.Println("HOURLY FORECAST")
 	italicWhite.Println("Time\t\tTemperature\tPrecip %\tHumidity %\tDescription")
 	for _, period := range hourlyForecast.Properties.Periods {
-		currentDay := time.Now().Day()
+		currentDay, currentMonth, currentYear := time.Now().Day(), time.Now().Month(), time.Now().Year()
 		forecastDateTime, err := time.Parse(time.RFC3339, period.StartTime)
 		if err != nil {
 			panic(err)
 		}
-		forecastDay := forecastDateTime.Day()
+		forecastDay, forecastMonth, forecastYear := forecastDateTime.Day(), forecastDateTime.Month(), forecastDateTime.Year()
 		forecastTemp := period.Temperature
 		forecastPrecip := period.Precipitation.Value
 		forecastHumid := period.Humidity.Value
 		forecastDesc := period.ShortForecast
 		// exclude anything except the current day
-		if forecastDay > currentDay {
+		if forecastYear > currentYear {
+			continue
+		} else if forecastMonth > currentMonth {
+			continue
+		} else if forecastDay > currentDay {
 			continue
 		} else {
 			fmt.Printf("%s\t\t%d°F\t\t%d%%\t\t%d%%\t\t%s\n",
